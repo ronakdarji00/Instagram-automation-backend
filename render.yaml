@@ -1,0 +1,15 @@
+services:
+  - type: background
+    name: instagram-auto-reply
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py --loop --interval 300
+    envVars:
+      - key: IG_ACCESS_TOKEN
+        sync: false
+      - key: IG_USER_ID
+        sync: false
+      - key: IG_REPLY_MESSAGE
+        value: "Thanks for watching!"
+      - key: IG_MAX_COMMENTS
+        value: "50"

@@ -28,29 +28,55 @@ CONFIG_PATH = Path(__file__).parent / "config.json"
 
 
 def load_config():
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
+    # Try environment variables first (for Render/Railway/etc), then fall back to config.json
+    cfg = {
+        "access_token": os.environ.get("IG_ACCESS_TOKEN", ""),
+        "ig_user_id": os.environ.get("IG_USER_ID", ""),
+        "reply_message": os.environ.get("IG_REPLY_MESSAGE", ""),
+        "state_file": os.environ.get("IG_STATE_FILE", "replied_comments.json"),
+        "max_comments_per_run": int(os.environ.get("IG_MAX_COMMENTS", "50")),
+    }
+
+    # If env vars not set, try config.json
+    if not cfg["access_token"] or not cfg["ig_user_id"]:
+        if CONFIG_PATH.exists():
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                file_cfg = json.load(f)
+            for k in ("access_token", "ig_user_id", "reply_message", "state_file", "max_comments_per_run"):
+                if not cfg.get(k) and file_cfg.get(k):
+                    cfg[k] = file_cfg[k]
+            if not cfg["reply_message"]:
+                cfg["reply_message"] = file_cfg.get("reply_message", "")
+
     missing = [
         k for k in ("access_token", "ig_user_id", "reply_message")
-        if not cfg.get(k) or cfg[k].startswith("PASTE_")
+        if not cfg.get(k) or str(cfg[k]).startswith("PASTE_")
     ]
     if missing:
-        print(f"[ERROR] config.json me ye fields bharo: {', '.join(missing)}")
-        print("README.md dekho for setup steps.")
+        print(f"[ERROR] Ye fields bharo: {', '.join(missing)}")
+        print("Environment variables (IG_ACCESS_TOKEN, IG_USER_ID, IG_REPLY_MESSAGE) ya config.json use karo.")
         sys.exit(1)
     return cfg
 
 
 def load_state(state_path: Path):
+    # On cloud platforms, state file may not persist — that's okay, in-memory works
     if state_path.exists():
-        with open(state_path, "r", encoding="utf-8") as f:
-            return set(json.load(f).get("replied", []))
+        try:
+            with open(state_path, "r", encoding="utf-8") as f:
+                return set(json.load(f).get("replied", []))
+        except (json.JSONDecodeError, IOError):
+            return set()
     return set()
 
 
 def save_state(state_path: Path, replied: set):
-    with open(state_path, "w", encoding="utf-8") as f:
-        json.dump({"replied": sorted(replied)}, f, indent=2)
+    try:
+        with open(state_path, "w", encoding="utf-8") as f:
+            json.dump({"replied": sorted(replied)}, f, indent=2)
+    except IOError:
+        # File system read-only (Render) — state stays in-memory only
+        pass
 
 
 def get_recent_media(cfg):
