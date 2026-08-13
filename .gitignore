@@ -1,5 +1,4 @@
 config.json
-replied_comments.json
 __pycache__/
 *.pyc
 .env

@@ -1,84 +1,63 @@
-# Instagram Reels Comment Auto-Reply
+# Instagram Auto-Reply — Backend
 
-Apne Instagram Business account ke reels par comments ka auto-reply bhejne wala simple Python script.
+Auto-reply to comments on your Instagram Business reels using the Meta Graph API.
 
-## Setup Steps
+## Deployment Options
 
-### 1. Meta Developer App banao
-1. https://developers.facebook.com par jao → **My Apps** → **Create App**
-2. App type: **Business** select karo
-3. App banne ke baad **Add Product** → **Instagram** add karo
+### Option 1: GitHub Actions (FREE, recommended)
 
-### 2. Permissions add karo
-App settings me jaake ye permissions enable karo:
-- `instagram_basic`
-- `instagram_manage_comments`
-- `pages_show_list`
-- `pages_read_engagement`
+Completely free for public repos. Runs every 5 minutes automatically.
 
-### 3. Instagram Business account link karo
-1. Apna Instagram account **Business** me convert karo (Instagram app → Settings → Account type and tools → Switch to Business)
-2. Ek Facebook Page banao (agar already nahi hai)
-3. Instagram account ko us Facebook Page se link karo
-4. Meta Business Suite me jaake Page → Settings → Linked accounts → Instagram connect karo
+#### Setup
 
-### 4. Access token + IG User ID lo
-Sabse asaan tarika — **Graph API Explorer** use karo:
-1. https://developers.facebook.com/tools/explorer/ par jao
-2. Apna Facebook Page select karo
-3. "Generate Access Token" par click karo with permissions:
-   - `instagram_basic`
-   - `instagram_manage_comments`
-   - `pages_read_engagement`
-4. Page ID se IG Business Account ID nikaalo:
-   ```
-   GET /{page-id}?fields=instagram_business_account&access_token=...
-   ```
-   Response me `instagram_business_account.id` — ye tumhara `ig_user_id` hai
+1. Go to your repo: https://github.com/ronakdarji00/Instagram-automation-backend
+2. **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret** and add these:
 
-### 5. Long-lived token banao (recommended)
-Short-lived token 1 hour me expire ho jata hai. Long-lived ke liye:
-```
-GET https://graph.facebook.com/v19.0/oauth/access_token
-  ?grant_type=fb_exchange_token
-  &client_id={app_id}
-  &client_secret={app_secret}
-  &fb_exchange_token={short_lived_token}
-```
-Ye ~60 days valid rahega. Expiry se pehle refresh karna padega.
+| Secret Name | Value |
+|-------------|-------|
+| `IG_ACCESS_TOKEN` | Your long-lived Instagram access token |
+| `IG_USER_ID` | Your Instagram Business account ID (e.g. `17841458403136214`) |
+| `IG_REPLY_MESSAGE` | Your reply message (e.g. `Thanks for watching!`) |
 
-### 6. config.json bharo
-```json
-{
-  "access_token": "tumhara_long_lived_token",
-  "ig_user_id": "tumhara_ig_business_id",
-  "reply_message": "Thanks for watching! 🙏",
-  "state_file": "replied_comments.json",
-  "max_comments_per_run": 50
-}
-```
+4. Go to **Actions** tab → **Enable workflows**
+5. Click on "Instagram Auto-Reply" → **Run workflow** to test manually
 
-## Run karna
+The workflow runs every 5 minutes automatically. State is saved back to the repo in `replied_comments.json`.
+
+### Option 2: Local (laptop/PC)
 
 ```bash
+cd backend
 pip install -r requirements.txt
-python main.py            # ek baar run
-python main.py --loop     # har 10 minute me repeat
-python main.py --loop --interval 300   # har 5 minute
+cp config.example.json config.json
+# Edit config.json with your token and IG user ID
+python main.py --loop --interval 300
 ```
-
-## Important Notes
-
-- **Sirf apne account ke liye** use karna — dusre accounts pe spam mat karo
-- Instagram ToS ke hisaab se **templated auto-replies** acceptable hain agar reasonable rate me ho
-- `replied_comments.json` file me replied comment IDs save hote hain — dobara reply nahi hoga
-- Token 60 din me expire hoga — uske baad refresh karo
-- Agar rate limit hit ho jaye to `max_comments_per_run` kam kar do
-- 24 ghante se purane comments ka reply API se generally nahi bhej paate — timely run karo
 
 ## Files
 
 - `main.py` — main script
-- `config.json` — tumhari settings
-- `replied_comments.json` — auto-generated state file (isay delete mat karna warna duplicate replies honge)
+- `config.example.json` — template config (copy to config.json for local use)
+- `replied_comments.json` — state file (auto-updated by GitHub Actions)
 - `requirements.txt` — Python dependencies
+- `.github/workflows/auto-reply.yml` — GitHub Actions workflow
+- `render.yaml` — Render deployment config (paid)
+
+## How it works
+
+1. Fetches recent media from your Instagram Business account
+2. Gets comments on each post
+3. Skips already-replied comments (tracked in replied_comments.json)
+4. Replies to new comments with your configured message
+5. Saves updated state
+
+## Environment Variables
+
+| Variable | Required | Default |
+|----------|----------|---------|
+| `IG_ACCESS_TOKEN` | Yes | - |
+| `IG_USER_ID` | Yes | - |
+| `IG_REPLY_MESSAGE` | Yes | - |
+| `IG_MAX_COMMENTS` | No | `50` |
+| `IG_STATE_FILE` | No | `replied_comments.json` |
