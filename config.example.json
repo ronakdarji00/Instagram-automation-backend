@@ -1,0 +1,7 @@
+{
+  "access_token": "PASTE_YOUR_LONG_LIVED_ACCESS_TOKEN_HERE",
+  "ig_user_id": "PASTE_YOUR_IG_BUSINESS_ACCOUNT_ID_HERE",
+  "reply_message": "Thanks for watching! 🙏",
+  "state_file": "replied_comments.json",
+  "max_comments_per_run": 50
+}
