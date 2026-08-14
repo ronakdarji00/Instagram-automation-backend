@@ -11,10 +11,8 @@ Requirements:
 
 Usage:
     python main.py            # one-time run
-    python main.py --loop     # runs every 10 minutes (set interval in config)
 """
 
-import argparse
 import json
 import os
 import sys
@@ -163,26 +161,8 @@ def run_once(cfg):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--loop", action="store_true", help="Har 10 minute me repeat karo")
-    parser.add_argument("--interval", type=int, default=600, help="Loop interval seconds me (default 600)")
-    args = parser.parse_args()
-
     cfg = load_config()
-
-    if args.loop:
-        print(f"[LOOP] Har {args.interval}s me run hoga. Ctrl+C se stop.")
-        try:
-            while True:
-                try:
-                    run_once(cfg)
-                except requests.HTTPError as e:
-                    print(f"[ERROR] {e}")
-                time.sleep(args.interval)
-        except KeyboardInterrupt:
-            print("\n[STOP] Loop band kar diya.")
-    else:
-        run_once(cfg)
+    run_once(cfg)
 
 
 if __name__ == "__main__":

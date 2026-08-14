@@ -1,9 +1,9 @@
 services:
-  - type: background
-    name: instagram-auto-reply
+  - type: web
+    name: instagram-auto-reply-api
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python main.py --loop --interval 300
+    startCommand: gunicorn -w 1 -b 0.0.0.0:$PORT app:app
     envVars:
       - key: IG_ACCESS_TOKEN
         sync: false
@@ -13,3 +13,5 @@ services:
         value: "Thanks for watching!"
       - key: IG_MAX_COMMENTS
         value: "50"
+      - key: API_KEY
+        sync: false
