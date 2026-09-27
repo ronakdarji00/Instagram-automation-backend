@@ -77,6 +77,24 @@ def save_state(state_path: Path, replied: set):
         pass
 
 
+def parse_meta_error(resp):
+    try:
+        err = resp.json().get("error", {})
+        msg = err.get("message", resp.text)
+        code = err.get("code")
+        subcode = err.get("error_subcode")
+        if code == 190 or subcode == 463:
+            return (
+                f"Instagram Access Token Expired (OAuthException 190, subcode {subcode}): {msg}. "
+                "Kripya Meta Developer Portal se naya Long-Lived Token generate karke update karein."
+            )
+        elif code == 100:
+            return f"Instagram API Parameter/Permission Error (code 100): {msg}"
+        return f"Instagram API Error (code {code}): {msg}"
+    except Exception:
+        return f"HTTP {resp.status_code}: {resp.text}"
+
+
 def get_recent_media(cfg):
     """Fetch recent reels/media from the IG business account."""
     url = f"{BASE_URL}/{cfg['ig_user_id']}/media"
@@ -86,7 +104,8 @@ def get_recent_media(cfg):
         "limit": 25,
     }
     resp = requests.get(url, params=params, timeout=30)
-    resp.raise_for_status()
+    if not resp.ok:
+        raise RuntimeError(parse_meta_error(resp))
     return resp.json().get("data", [])
 
 
@@ -99,7 +118,8 @@ def get_comments(cfg, media_id: str, limit: int = 50):
         "limit": limit,
     }
     resp = requests.get(url, params=params, timeout=30)
-    resp.raise_for_status()
+    if not resp.ok:
+        raise RuntimeError(parse_meta_error(resp))
     return resp.json().get("data", [])
 
 
@@ -109,7 +129,8 @@ def reply_to_comment(cfg, comment_id: str, message: str):
     payload = {"message": message, "access_token": cfg["access_token"]}
     resp = requests.post(url, data=payload, timeout=30)
     if resp.status_code != 200:
-        print(f"  [WARN] Reply fail hua ({resp.status_code}): {resp.text}")
+        err_msg = parse_meta_error(resp)
+        print(f"  [WARN] Reply fail hua ({resp.status_code}): {err_msg}")
         return False
     return True
 
@@ -121,7 +142,12 @@ def run_once(cfg):
     replied_this_run = 0
 
     print(f"\n=== Run start: {time.strftime('%Y-%m-%d %H:%M:%S')} ===")
-    media = get_recent_media(cfg)
+    try:
+        media = get_recent_media(cfg)
+    except Exception as e:
+        print(f"\n[ERROR] Media fetch nahi ho saka:\n{e}")
+        return
+
     print(f"Recent media fetched: {len(media)}")
 
     for post in media:
@@ -131,7 +157,7 @@ def run_once(cfg):
         print(f"\nPost {media_id} ({post.get('media_type')}) — {post.get('comments_count')} comments")
         try:
             comments = get_comments(cfg, media_id)
-        except requests.HTTPError as e:
+        except Exception as e:
             print(f"  [WARN] Comments fetch fail: {e}")
             continue
 
